@@ -21,3 +21,20 @@ impl ValueType {
     }
   }
 }
+
+impl TryFrom<u8> for ValueType {
+  type Error = ();
+
+  fn try_from(value: u8) -> Result<Self, Self::Error> {
+    match value {
+      0 => Ok(Self::U8),
+      1 => Ok(Self::U16),
+      2 => Ok(Self::U32),
+      3 => Ok(Self::I8),
+      4 => Ok(Self::I16),
+      5 => Ok(Self::I32),
+      6 => Ok(Self::F32),
+      _ => Err(()),
+    }
+  }
+}

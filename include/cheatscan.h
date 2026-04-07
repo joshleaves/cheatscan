@@ -10,13 +10,19 @@ extern "C" {
 #endif
 
 Scanner *cheatscan_new_from_unknown(
-  Configuration config,
+  uint8_t value_type,
+  uint8_t endiannness,
+  uint8_t alignment,
+  uint32_t base_address,
   const uint8_t *initial_block_ptr,
   size_t initial_block_len,
   uint8_t *out_error);
 
 Scanner *cheatscan_new_from_known_u8(
-  Configuration config,
+  uint8_t value_type,
+  uint8_t endiannness,
+  uint8_t alignment,
+  uint32_t base_address,
   const uint8_t *initial_block_ptr,
   size_t initial_block_len,
   uint8_t cmp,
@@ -24,7 +30,10 @@ Scanner *cheatscan_new_from_known_u8(
   uint8_t *out_error);
 
 Scanner *cheatscan_new_from_known_u16(
-  Configuration config,
+  uint8_t value_type,
+  uint8_t endiannness,
+  uint8_t alignment,
+  uint32_t base_address,
   const uint8_t *initial_block_ptr,
   size_t initial_block_len,
   uint8_t cmp,
@@ -32,7 +41,10 @@ Scanner *cheatscan_new_from_known_u16(
   uint8_t *out_error);
 
 Scanner *cheatscan_new_from_known_u32(
-  Configuration config,
+  uint8_t value_type,
+  uint8_t endiannness,
+  uint8_t alignment,
+  uint32_t base_address,
   const uint8_t *initial_block_ptr,
   size_t initial_block_len,
   uint8_t cmp,
@@ -40,7 +52,10 @@ Scanner *cheatscan_new_from_known_u32(
   uint8_t *out_error);
 
 Scanner *cheatscan_new_from_known_i8(
-  Configuration config,
+  uint8_t value_type,
+  uint8_t endiannness,
+  uint8_t alignment,
+  uint32_t base_address,
   const uint8_t *initial_block_ptr,
   size_t initial_block_len,
   uint8_t cmp,
@@ -48,7 +63,10 @@ Scanner *cheatscan_new_from_known_i8(
   uint8_t *out_error);
 
 Scanner *cheatscan_new_from_known_i16(
-  Configuration config,
+  uint8_t value_type,
+  uint8_t endiannness,
+  uint8_t alignment,
+  uint32_t base_address,
   const uint8_t *initial_block_ptr,
   size_t initial_block_len,
   uint8_t cmp,
@@ -56,7 +74,10 @@ Scanner *cheatscan_new_from_known_i16(
   uint8_t *out_error);
 
 Scanner *cheatscan_new_from_known_i32(
-  Configuration config,
+  uint8_t value_type,
+  uint8_t endiannness,
+  uint8_t alignment,
+  uint32_t base_address,
   const uint8_t *initial_block_ptr,
   size_t initial_block_len,
   uint8_t cmp,
@@ -64,7 +85,10 @@ Scanner *cheatscan_new_from_known_i32(
   uint8_t *out_error);
 
 Scanner *cheatscan_new_from_known_f32(
-  Configuration config,
+  uint8_t value_type,
+  uint8_t endiannness,
+  uint8_t alignment,
+  uint32_t base_address,
   const uint8_t *initial_block_ptr,
   size_t initial_block_len,
   uint8_t cmp,

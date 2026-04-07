@@ -1,9 +1,12 @@
 use core::slice;
-use crate::ScanError;
+use crate::Alignment;
 use crate::Configuration;
+use crate::Endianness;
+use crate::ScanError;
 use crate::Scanner;
 use crate::ComparisonType;
 use crate::ScanValue;
+use crate::ValueType;
 
 macro_rules! check_not_null {
   ($ptr:expr, $ret:expr) => {
@@ -34,12 +37,23 @@ macro_rules! ffi_result {
 // pub fn cheatscan::Scanner::new_from_unknown(config: cheatscan::Configuration, initial_block: &[u8]) -> core::result::Result<Self, cheatscan::ScanError>
 #[unsafe(no_mangle)]
 pub extern "C" fn cheatscan_new_from_unknown(
-  config: Configuration,
+  value_type: u8,
+  endianness: u8,
+  alignment: u8,
+  base_address: u32,
   initial_block_ptr: *const u8,
   initial_block_len: usize,
   out_error: *mut u8,
 ) -> *mut Scanner {
   check_not_null!(initial_block_ptr, core::ptr::null_mut());
+  let cfg_value_type = ffi_try!(ValueType::try_from(value_type), core::ptr::null_mut());
+  let cfg_endienness = ffi_try!(Endianness::try_from(endianness), core::ptr::null_mut());
+  let cfg_alignment = ffi_try!(Alignment::try_from(alignment), core::ptr::null_mut());
+  let config = Configuration {
+    value_type: cfg_value_type,
+    endianness: cfg_endienness,
+    alignment: cfg_alignment,
+    base_address };
 
   let result = unsafe {
     let initial_block = slice::from_raw_parts(initial_block_ptr, initial_block_len);
@@ -67,7 +81,10 @@ macro_rules! define_new_from_known_fn {
   ($fn_name:ident, $value_ty:ty, $variant:ident) => {
     #[unsafe(no_mangle)]
     pub extern "C" fn $fn_name(
-      config: Configuration,
+      value_type: u8,
+      endianness: u8,
+      alignment: u8,
+      base_address: u32,
       initial_block_ptr: *const u8,
       initial_block_len: usize,
       cmp: u8,
@@ -75,6 +92,14 @@ macro_rules! define_new_from_known_fn {
       out_error: *mut u8,
     ) -> *mut Scanner {
       check_not_null!(initial_block_ptr, core::ptr::null_mut());
+      let cfg_value_type = ffi_try!(ValueType::try_from(value_type), core::ptr::null_mut());
+      let cfg_endienness = ffi_try!(Endianness::try_from(endianness), core::ptr::null_mut());
+      let cfg_alignment = ffi_try!(Alignment::try_from(alignment), core::ptr::null_mut());
+      let config = Configuration {
+        value_type: cfg_value_type,
+        endianness: cfg_endienness,
+        alignment: cfg_alignment,
+        base_address };
       let cmp = ffi_try!(ComparisonType::try_from(cmp), core::ptr::null_mut());
 
       let result = unsafe {
