@@ -4,6 +4,10 @@ version = "0.9.0"
 edition = "2024"
 authors = ["Arnaud 'red' Rouyer"]
 readme = "README.md"
+license = "MIT"
+description = "A lightweight memory scanning library for Rust, C, and WASM. Implements classic cheat-engine style workflows with a stable, low-level FFI and zero-allocation scan passes."
+homepage = "https://github.com/joshleaves/cheatscan"
+repository = "https://github.com/joshleaves/cheatscan"
 
 [lib]
 crate-type = ["rlib", "cdylib", "staticlib"]

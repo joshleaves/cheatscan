@@ -8,10 +8,19 @@ It is designed around the classic cheat-search workflow:
 - scan for an exact value, or compare against the previous value
 - keep narrowing the candidate addresses over multiple scans
 
+```rust
+use cheatscan::{ComparisonType, Configuration, ScanValue, Scanner};
+
+let mut scanner = Scanner::new_from_unknown(config, &initial_block)?;
+scanner.scan(&next_block, ComparisonType::Gt, ScanValue::PreviousValue)?;
+
+println!("{} candidates", scanner.count());
+```
+
 The crate currently exposes:
 
 - a Rust API
-- a C-compatible FFI with generated headers in [`include/`](/Users/red/Projects/cheatscan/include)
+- a C-compatible FFI with generated headers in [`include/`](cheatscan/include)
 
 ## Features
 
@@ -23,23 +32,12 @@ The crate currently exposes:
 - exact-value scans
 - previous-value scans
 - incremental narrowing of candidate addresses
-
-## Project Layout
-
-The scanner domain lives under [`src/scanner/`](/Users/red/Projects/cheatscan/src/scanner):
-
-- [`mod.rs`](/Users/red/Projects/cheatscan/src/scanner/mod.rs): public facade
-- [`scanner.rs`](/Users/red/Projects/cheatscan/src/scanner/scanner.rs): `Scanner`
-- [`comparison.rs`](/Users/red/Projects/cheatscan/src/scanner/comparison.rs): comparison operators
-- [`scan_error.rs`](/Users/red/Projects/cheatscan/src/scanner/scan_error.rs): scanner errors
-- [`value_reader.rs`](/Users/red/Projects/cheatscan/src/scanner/value_reader.rs): typed byte readers
-- [`value_type.rs`](/Users/red/Projects/cheatscan/src/scanner/value_type.rs): supported primitive types
-
-The FFI layer lives in [`src/ffi.rs`](/Users/red/Projects/cheatscan/src/ffi.rs).
+- no allocations during scan passes (after initialization)
+- works in native (Rust/C) and WASM environments
 
 ## Rust API
 
-Core public types are exported from [`src/lib.rs`](/Users/red/Projects/cheatscan/src/lib.rs):
+Core public types are exported from [`src/lib.rs`](cheatscan/src/lib.rs):
 
 - `Scanner`
 - `ScanValue`
@@ -132,14 +130,17 @@ Relevant scanner errors include:
 - `InitialScanValueRequired`: `new_from_known(...)` was called with `ScanValue::PreviousValue`
 - `RamBlockTooSmall`: the RAM block cannot contain even one value of the configured type
 
-See [`src/scanner/scan_error.rs`](/Users/red/Projects/cheatscan/src/scanner/scan_error.rs) for details.
+See [`src/scanner/scan_error.rs`](cheatscan/src/scanner/scan_error.rs) for details.
 
 ## C / FFI API
 
-The FFI surface is implemented in [`src/ffi.rs`](/Users/red/Projects/cheatscan/src/ffi.rs) and declared in:
+The FFI layer is designed to be:
 
-- [`include/cheatscan.h`](/Users/red/Projects/cheatscan/include/cheatscan.h)
-- [`include/cheatscan_types.h`](/Users/red/Projects/cheatscan/include/cheatscan_types.h)
+- ABI-stable
+- WASM-friendly
+- free of implicit struct layouts or hidden allocations
+
+All functions use explicit scalar arguments and pointer/length pairs.
 
 ### Construction
 
@@ -147,7 +148,10 @@ Unknown initial value:
 
 ```c
 Scanner *cheatscan_new_from_unknown(
-  Configuration config,
+  uint8_t value_type,
+  uint8_t endianness,
+  uint8_t alignment,
+  uint32_t base_address,
   const uint8_t *initial_block_ptr,
   size_t initial_block_len,
   uint8_t *out_error);
@@ -235,10 +239,29 @@ Build release artifacts:
 cargo build --release
 ```
 
-The crate is currently configured to produce Rust library artifacts, and the repository also contains generated C headers in [`include/`](/Users/red/Projects/cheatscan/include).
+The crate is currently configured to produce Rust library artifacts, and the repository also contains generated C headers in [`include/`](cheatscan/include).
+
+## Project Layout
+
+The scanner domain lives under [`src/scanner/`](cheatscan/src/scanner):
+
+- [`mod.rs`](cheatscan/src/scanner/mod.rs): public facade
+- [`scanner.rs`](cheatscan/src/scanner/scanner.rs): `Scanner`
+- [`comparison.rs`](cheatscan/src/scanner/comparison.rs): comparison operators
+- [`scan_error.rs`](cheatscan/src/scanner/scan_error.rs): scanner errors
+- [`value_reader.rs`](cheatscan/src/scanner/value_reader.rs): typed byte readers
+- [`value_type.rs`](cheatscan/src/scanner/value_type.rs): supported primitive types
+
+The FFI layer lives in [`src/ffi.rs`](cheatscan/src/ffi.rs).
 
 ## Current Status
 
-`cheatscan` is currently being shaped as the core scanning library first.
+`cheatscan` is currently focused on stabilizing the core scanning API.
 
 The Rust API and the C-facing header are the primary surfaces for now. Higher-level bindings can be added later once the core API is considered stable.
+
+## License
+
+This project is licensed under the MIT License.
+
+See the `LICENSE` file for details.
