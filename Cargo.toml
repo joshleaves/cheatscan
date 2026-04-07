@@ -1,0 +1,31 @@
+[package]
+name = "cheatscan"
+version = "0.9.0"
+edition = "2024"
+authors = ["Arnaud 'red' Rouyer"]
+readme = "README.md"
+
+[lib]
+crate-type = ["rlib", "cdylib", "staticlib"]
+name = "cheatscan"
+path = "src/lib.rs"
+
+[profile.dev]
+opt-level = 1
+
+[profile.test]
+opt-level = 2
+
+[profile.release]
+opt-level = 3
+strip = true      # Strip symbols
+panic = "abort"   # Abort on panic
+lto = true        # Enable Link Time Optimization
+codegen-units = 1 # Reduce number of codegen units to increase optimizations.
+
+[dev-dependencies]
+criterion = { version = "0.8", features = ["html_reports"] }
+
+[[bench]]
+name = "bench_exact_u8"
+harness = false

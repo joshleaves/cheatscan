@@ -1,0 +1,14 @@
+language = "C"
+
+include_guard = "CHEATSCAN_H"
+
+[export]
+exclude = ["cheatscan_*"]
+include = [
+  "Alignment",
+  "ComparisonType",
+  "Endianness",
+  "ScanError",
+  "ValueType",
+  "Configuration"
+]

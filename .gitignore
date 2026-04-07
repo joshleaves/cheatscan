@@ -1,0 +1,8 @@
+# Rust build output
+/target/
+
+# Backup files from editors / rustfmt
+**/*.rs.bk
+
+# macOS noise
+.DS_Store
