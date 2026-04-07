@@ -24,16 +24,14 @@ The crate currently exposes:
 
 ## Features
 
-- `u8`, `u16`, `u32`
-- `i8`, `i16`, `i32`
-- `f32`
-- little-endian and big-endian reads
-- aligned and unaligned scans
-- exact-value scans
-- previous-value scans
-- incremental narrowing of candidate addresses
-- no allocations during scan passes (after initialization)
-- works in native (Rust/C) and WASM environments
+- Supports multiple types: `u8`, `u16`, `u32`, `i8`, `i16`, `i32`, `f32`
+- Little-endian and big-endian reads
+- Aligned and unaligned scans
+- Exact-value scans
+- Previous-value scans
+- Incremental narrowing of candidate addresses
+- Allocations are limited to initialization and result storage
+- Works in native (Rust/C) and WASM environments
 
 ## Rust API
 
