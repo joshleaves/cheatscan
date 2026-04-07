@@ -9,9 +9,9 @@ int main(void) {
 
   uint8_t error = 0;
   Scanner *scanner = cheatscan_new_from_unknown(
-    U8, // .value_type
-    Little, // .endianness
-    Unaligned, // .alignment
+    CHEATSCAN_VALUE_U8,            // .value_type
+    CHEATSCAN_ENDIAN_LITTLE,       // .endianness
+    CHEATSCAN_ALIGNMENT_UNALIGNED, // .alignment
     0, // .base_address
     initial_block,
     sizeof(initial_block),
@@ -27,7 +27,7 @@ int main(void) {
     scanner,
     next_block,
     sizeof(next_block),
-    Gt
+    CHEATSCAN_CMP_GT
   );
 
   if (error != 0) {

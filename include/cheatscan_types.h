@@ -10,13 +10,13 @@
  * Primitive value kinds supported by the scanner.
  */
 enum ValueType {
-  U8 = 0,
-  U16 = 1,
-  U32 = 2,
-  I8 = 3,
-  I16 = 4,
-  I32 = 5,
-  F32 = 6,
+  CHEATSCAN_VALUE_U8 = 0,
+  CHEATSCAN_VALUE_U16 = 1,
+  CHEATSCAN_VALUE_U32 = 2,
+  CHEATSCAN_VALUE_I8 = 3,
+  CHEATSCAN_VALUE_I16 = 4,
+  CHEATSCAN_VALUE_I32 = 5,
+  CHEATSCAN_VALUE_F32 = 6,
 };
 typedef uint8_t ValueType;
 
@@ -24,8 +24,8 @@ typedef uint8_t ValueType;
  * Byte order used when reading multi-byte values from a RAM block.
  */
 enum Endianness {
-  Little = 0,
-  Big = 1,
+  CHEATSCAN_ENDIAN_LITTLE = 0,
+  CHEATSCAN_ENDIAN_BIG = 1,
 };
 typedef uint8_t Endianness;
 
@@ -33,8 +33,8 @@ typedef uint8_t Endianness;
  * Address stepping strategy used when enumerating scan candidates.
  */
 enum Alignment {
-  Unaligned = 0,
-  Aligned = 1,
+  CHEATSCAN_ALIGNMENT_UNALIGNED = 0,
+  CHEATSCAN_ALIGNMENT_ALIGNED = 1,
 };
 typedef uint8_t Alignment;
 
@@ -42,12 +42,12 @@ typedef uint8_t Alignment;
  * Comparison operator applied during a scan.
  */
 enum ComparisonType {
-  Eq = 0,
-  Ne = 1,
-  Lt = 2,
-  Le = 3,
-  Gt = 4,
-  Ge = 5,
+  CHEATSCAN_CMP_EQ = 0,
+  CHEATSCAN_CMP_NE = 1,
+  CHEATSCAN_CMP_LT = 2,
+  CHEATSCAN_CMP_LE = 3,
+  CHEATSCAN_CMP_GT = 4,
+  CHEATSCAN_CMP_GE = 5,
 };
 typedef uint8_t ComparisonType;
 
