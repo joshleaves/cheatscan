@@ -1,12 +1,12 @@
-use core::slice;
 use crate::Alignment;
+use crate::ComparisonType;
 use crate::Configuration;
 use crate::Endianness;
 use crate::ScanError;
-use crate::Scanner;
-use crate::ComparisonType;
 use crate::ScanValue;
+use crate::Scanner;
 use crate::ValueType;
+use core::slice;
 
 macro_rules! check_not_null {
   ($ptr:expr, $ret:expr) => {
@@ -53,7 +53,8 @@ pub extern "C" fn cheatscan_new_from_unknown(
     value_type: cfg_value_type,
     endianness: cfg_endienness,
     alignment: cfg_alignment,
-    base_address };
+    base_address,
+  };
 
   let result = unsafe {
     let initial_block = slice::from_raw_parts(initial_block_ptr, initial_block_len);
@@ -99,7 +100,8 @@ macro_rules! define_new_from_known_fn {
         value_type: cfg_value_type,
         endianness: cfg_endienness,
         alignment: cfg_alignment,
-        base_address };
+        base_address,
+      };
       let cmp = ffi_try!(ComparisonType::try_from(cmp), core::ptr::null_mut());
 
       let result = unsafe {
@@ -131,7 +133,6 @@ define_new_from_known_fn!(cheatscan_new_from_known_i8, i8, I8);
 define_new_from_known_fn!(cheatscan_new_from_known_i16, i16, I16);
 define_new_from_known_fn!(cheatscan_new_from_known_i32, i32, I32);
 define_new_from_known_fn!(cheatscan_new_from_known_f32, f32, F32);
-
 
 // pub fn cheatscan::Scanner::scan_previous(&mut self, next_block: &[u8], cmp: cheatscan::ComparisonType) -> core::result::Result<(), cheatscan::ScanError>
 #[unsafe(no_mangle)]
@@ -189,7 +190,6 @@ define_scan_fn!(cheatscan_scan_i16, i16, I16);
 define_scan_fn!(cheatscan_scan_i32, i32, I32);
 define_scan_fn!(cheatscan_scan_f32, f32, F32);
 
-
 // pub fn cheatscan::Scanner::count(&self) -> usize
 #[unsafe(no_mangle)]
 pub extern "C" fn cheatscan_count(scanner: *mut Scanner) -> u32 {
@@ -216,7 +216,12 @@ pub extern "C" fn cheatscan_write_results(
 
   let mut written = 0;
 
-  for (i, value) in scanner.results().skip(offset).take(out_results_len).enumerate() {
+  for (i, value) in scanner
+    .results()
+    .skip(offset)
+    .take(out_results_len)
+    .enumerate()
+  {
     out_results[i] = value;
     written += 1;
   }
@@ -227,10 +232,8 @@ pub extern "C" fn cheatscan_write_results(
 #[unsafe(no_mangle)]
 pub extern "C" fn cheatscan_free(scanner: *mut Scanner) {
   if scanner.is_null() {
-    return
+    return;
   }
 
-  unsafe {
-    drop(Box::from_raw(scanner))
-  }
+  unsafe { drop(Box::from_raw(scanner)) }
 }

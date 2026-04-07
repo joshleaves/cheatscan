@@ -27,7 +27,7 @@ impl TryFrom<u8> for Endianness {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Alignment {
   Unaligned = 0,
-  Aligned = 1
+  Aligned = 1,
 }
 impl TryFrom<u8> for Alignment {
   type Error = ();
@@ -41,8 +41,6 @@ impl TryFrom<u8> for Alignment {
   }
 }
 
-
-
 /// Typed comparison value used by scans.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ScanValue {
@@ -55,7 +53,6 @@ pub enum ScanValue {
   F32(f32),
   PreviousValue,
 }
-
 
 impl ScanValue {
   pub(crate) fn value_type(self) -> Option<ValueType> {

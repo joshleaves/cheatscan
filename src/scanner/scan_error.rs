@@ -9,7 +9,7 @@ pub enum ScanError {
   TypeMismatch = 1,
 
   /// The provided bytes are not long enough to be converted into  [`ValueType`](crate::ValueType).
-  /// 
+  ///
   /// Triggered when a scan is requested with a byte array whose width is incompatible with the
   /// scanner configuration.
   InvalidValueLength = 2,
