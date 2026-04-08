@@ -1,6 +1,6 @@
 language = "C"
 
-include_guard = "CHEATSCAN_H"
+include_guard = "CHEATSCAN_TYPES_H"
 
 [export]
 exclude = ["cheatscan_*"]
