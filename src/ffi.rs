@@ -34,7 +34,7 @@ macro_rules! ffi_result {
   };
 }
 
-// pub fn cheatscan::Scanner::new_from_unknown(config: cheatscan::Configuration, initial_block: &[u8]) -> core::result::Result<Self, cheatscan::ScanError>
+// pub fn cheatscan::Scanner::new_from_unknown(config: cheatscan::Configuration, initial_block: &[u8]) -> Result<Self, ScanError>
 #[unsafe(no_mangle)]
 pub extern "C" fn cheatscan_new_from_unknown(
   value_type: u8,
@@ -77,7 +77,7 @@ pub extern "C" fn cheatscan_new_from_unknown(
   }
 }
 
-// pub fn cheatscan::Scanner::new_from_known(config: cheatscan::Configuration, initial_block: &[u8], cmp: cheatscan::ComparisonType, value: cheatscan::ScanValue) -> core::result::Result<Self, cheatscan::ScanError>
+// pub fn cheatscan::Scanner::new_from_known(config: cheatscan::Configuration, initial_block: &[u8], cmp: cheatscan::ComparisonType, value: cheatscan::ScanValue) -> Result<Self, ScanError>
 macro_rules! define_new_from_known_fn {
   ($fn_name:ident, $value_ty:ty, $variant:ident) => {
     #[unsafe(no_mangle)]
@@ -134,7 +134,7 @@ define_new_from_known_fn!(cheatscan_new_from_known_i16, i16, I16);
 define_new_from_known_fn!(cheatscan_new_from_known_i32, i32, I32);
 define_new_from_known_fn!(cheatscan_new_from_known_f32, f32, F32);
 
-// pub fn cheatscan::Scanner::scan_previous(&mut self, next_block: &[u8], cmp: cheatscan::ComparisonType) -> core::result::Result<(), cheatscan::ScanError>
+// pub fn scan(&mut self, next_block: &[u8], cmp: ComparisonType, value: ScanValue) -> Result<(), ScanError>
 #[unsafe(no_mangle)]
 pub extern "C" fn cheatscan_scan_previous(
   scanner: *mut Scanner,
@@ -156,7 +156,7 @@ pub extern "C" fn cheatscan_scan_previous(
   ffi_result!(result)
 }
 
-// pub fn cheatscan::Scanner::scan_exact_bytes(&mut self, next_block: &[u8], cmp: cheatscan::ComparisonType, value: &[u8]) -> core::result::Result<(), cheatscan::ScanError>
+
 macro_rules! define_scan_fn {
   ($fn_name:ident, $value_ty:ty, $variant:ident) => {
     #[unsafe(no_mangle)]
@@ -189,6 +189,36 @@ define_scan_fn!(cheatscan_scan_i8, i8, I8);
 define_scan_fn!(cheatscan_scan_i16, i16, I16);
 define_scan_fn!(cheatscan_scan_i32, i32, I32);
 define_scan_fn!(cheatscan_scan_f32, f32, F32);
+
+// pub fn cheatscan::Scanner::scan_again(&mut self, cmp: ComparisonType, value: ScanValue) -> Result<(), ScanError>
+macro_rules! define_scan_again_fn {
+  ($fn_name:ident, $value_ty:ty, $variant:ident) => {
+    #[unsafe(no_mangle)]
+    pub extern "C" fn $fn_name(
+      scanner: *mut Scanner,
+      cmp: u8,
+      value: $value_ty,
+    ) -> u8 {
+      check_not_null!(scanner, ScanError::NullPointer as u8);
+      let cmp = ffi_try!(ComparisonType::try_from(cmp), ScanError::TypeMismatch as u8);
+
+      let result = unsafe {
+        let scanner = &mut *scanner;
+
+        scanner.scan_again(cmp, ScanValue::$variant(value))
+      };
+
+      ffi_result!(result)
+    }
+  };
+}
+define_scan_again_fn!(cheatscan_scan_again_u8, u8, U8);
+define_scan_again_fn!(cheatscan_scan_again_u16, u16, U16);
+define_scan_again_fn!(cheatscan_scan_again_u32, u32, U32);
+define_scan_again_fn!(cheatscan_scan_again_i8, i8, I8);
+define_scan_again_fn!(cheatscan_scan_again_i16, i16, I16);
+define_scan_again_fn!(cheatscan_scan_again_i32, i32, I32);
+define_scan_again_fn!(cheatscan_scan_again_f32, f32, F32);
 
 // pub fn cheatscan::Scanner::count(&self) -> usize
 #[unsafe(no_mangle)]

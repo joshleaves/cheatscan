@@ -67,6 +67,7 @@ impl Scanner {
     Ok(scanner)
   }
 
+
   /// Applies a new scan against `next_block`.
   ///
   /// `next_block` must have the same length as the block used to initialize the scanner.
@@ -81,46 +82,46 @@ impl Scanner {
 
     match (self.value_type, value) {
       (ValueType::U8, ScanValue::U8(expected)) => {
-        self.filter_results(next_block, read_u8, cmp, Some(expected));
+        self.filter_results(Some(next_block), read_u8, cmp, Some(expected));
       }
       (ValueType::U8, ScanValue::PreviousValue) => {
-        self.filter_results(next_block, read_u8, cmp, None);
+        self.filter_results(Some(next_block), read_u8, cmp, None);
       }
       (ValueType::U16, ScanValue::U16(expected)) => {
-        self.filter_results(next_block, read_u16, cmp, Some(expected));
+        self.filter_results(Some(next_block), read_u16, cmp, Some(expected));
       }
       (ValueType::U16, ScanValue::PreviousValue) => {
-        self.filter_results(next_block, read_u16, cmp, None);
+        self.filter_results(Some(next_block), read_u16, cmp, None);
       }
       (ValueType::U32, ScanValue::U32(expected)) => {
-        self.filter_results(next_block, read_u32, cmp, Some(expected));
+        self.filter_results(Some(next_block), read_u32, cmp, Some(expected));
       }
       (ValueType::U32, ScanValue::PreviousValue) => {
-        self.filter_results(next_block, read_u32, cmp, None);
+        self.filter_results(Some(next_block), read_u32, cmp, None);
       }
       (ValueType::I8, ScanValue::I8(expected)) => {
-        self.filter_results(next_block, read_i8, cmp, Some(expected));
+        self.filter_results(Some(next_block), read_i8, cmp, Some(expected));
       }
       (ValueType::I8, ScanValue::PreviousValue) => {
-        self.filter_results(next_block, read_i8, cmp, None);
+        self.filter_results(Some(next_block), read_i8, cmp, None);
       }
       (ValueType::I16, ScanValue::I16(expected)) => {
-        self.filter_results(next_block, read_i16, cmp, Some(expected));
+        self.filter_results(Some(next_block), read_i16, cmp, Some(expected));
       }
       (ValueType::I16, ScanValue::PreviousValue) => {
-        self.filter_results(next_block, read_i16, cmp, None);
+        self.filter_results(Some(next_block), read_i16, cmp, None);
       }
       (ValueType::I32, ScanValue::I32(expected)) => {
-        self.filter_results(next_block, read_i32, cmp, Some(expected));
+        self.filter_results(Some(next_block), read_i32, cmp, Some(expected));
       }
       (ValueType::I32, ScanValue::PreviousValue) => {
-        self.filter_results(next_block, read_i32, cmp, None);
+        self.filter_results(Some(next_block), read_i32, cmp, None);
       }
       (ValueType::F32, ScanValue::F32(expected)) => {
-        self.filter_results(next_block, read_f32, cmp, Some(expected));
+        self.filter_results(Some(next_block), read_f32, cmp, Some(expected));
       }
       (ValueType::F32, ScanValue::PreviousValue) => {
-        self.filter_results(next_block, read_f32, cmp, None);
+        self.filter_results(Some(next_block), read_f32, cmp, None);
       }
       _ => unreachable!("scan value compatibility is validated before dispatch"),
     }
@@ -130,82 +131,44 @@ impl Scanner {
     Ok(())
   }
 
-  pub fn scan_previous(&mut self, next_block: &[u8], cmp: ComparisonType) -> Result<(), ScanError> {
-    self.ensure_ram_block_len_matches(next_block)?;
 
-    match self.value_type {
-      ValueType::U8 => self.filter_results(next_block, read_u8, cmp, None),
-      ValueType::U16 => self.filter_results(next_block, read_u16, cmp, None),
-      ValueType::U32 => self.filter_results(next_block, read_u32, cmp, None),
-      ValueType::I8 => self.filter_results(next_block, read_i8, cmp, None),
-      ValueType::I16 => self.filter_results(next_block, read_i16, cmp, None),
-      ValueType::I32 => self.filter_results(next_block, read_i32, cmp, None),
-      ValueType::F32 => self.filter_results(next_block, read_f32, cmp, None),
-    };
+  /// Applies a new scan against the current block.
+  pub fn scan_again(&mut self, cmp: ComparisonType, value: ScanValue) -> Result<(), ScanError> {
+    self.ensure_scan_value_matches_config(&value)?;
+    if matches!(value, ScanValue::PreviousValue) {
+      return Err(ScanError::PreviousValueRequiresNewBlock)
+    }
 
-    self.ram_block.copy_from_slice(next_block);
+
+    match value {
+      ScanValue::U8(expected) => {
+        self.filter_results(None, read_u8, cmp, Some(expected));
+        // self.filter_results(None, read_u8, cmp, Some(expected));
+      }
+      ScanValue::U16(expected) => {
+        self.filter_results(None, read_u16, cmp, Some(expected));
+      }
+      ScanValue::U32(expected) => {
+        self.filter_results(None, read_u32, cmp, Some(expected));
+      }
+      ScanValue::I8(expected) => {
+        self.filter_results(None, read_i8, cmp, Some(expected));
+      }
+      ScanValue::I16(expected) => {
+        self.filter_results(None, read_i16, cmp, Some(expected));
+      }
+      ScanValue::I32(expected) => {
+        self.filter_results(None, read_i32, cmp, Some(expected));
+      }
+      ScanValue::F32(expected) => {
+        self.filter_results(None, read_f32, cmp, Some(expected));
+      }
+      _ => unreachable!("scan value compatibility is validated before dispatch"),
+    }
+
     Ok(())
   }
 
-  pub fn scan_exact_bytes(
-    &mut self,
-    next_block: &[u8],
-    cmp: ComparisonType,
-    value: &[u8],
-  ) -> Result<(), ScanError> {
-    self.ensure_ram_block_len_matches(next_block)?;
-    if value.len() != self.value_type.width() {
-      return Err(ScanError::InvalidValueLength);
-    }
-
-    match self.value_type {
-      ValueType::U8 => self.filter_results(
-        next_block,
-        read_u8,
-        cmp,
-        Some(read_u8(value, self.endianness)),
-      ),
-      ValueType::U16 => self.filter_results(
-        next_block,
-        read_u16,
-        cmp,
-        Some(read_u16(value, self.endianness)),
-      ),
-      ValueType::U32 => self.filter_results(
-        next_block,
-        read_u32,
-        cmp,
-        Some(read_u32(value, self.endianness)),
-      ),
-      ValueType::I8 => self.filter_results(
-        next_block,
-        read_i8,
-        cmp,
-        Some(read_i8(value, self.endianness)),
-      ),
-      ValueType::I16 => self.filter_results(
-        next_block,
-        read_i16,
-        cmp,
-        Some(read_i16(value, self.endianness)),
-      ),
-      ValueType::I32 => self.filter_results(
-        next_block,
-        read_i32,
-        cmp,
-        Some(read_i32(value, self.endianness)),
-      ),
-      ValueType::F32 => self.filter_results(
-        next_block,
-        read_f32,
-        cmp,
-        Some(read_f32(value, self.endianness)),
-      ),
-    }
-
-    self.ram_block.copy_from_slice(next_block);
-    Ok(())
-  }
 
   /// Returns the number of current candidates.
   ///
@@ -248,7 +211,7 @@ impl Scanner {
   /// Filters candidates by comparing the current value against either a constant value or the previous block.
   fn filter_results<T, R>(
     &mut self,
-    next_block: &[u8],
+    next_block: Option<&[u8]>,
     read: R,
     cmp: ComparisonType,
     expected: Option<T>,
@@ -259,9 +222,13 @@ impl Scanner {
     let endianness = self.endianness;
     let previous_block = self.ram_block.as_slice();
     let cmp_fn = cmp.to_fn();
+
     let matches = |offset: usize| {
       let end = offset + self.width;
-      let candidate = read(&next_block[offset..end], endianness);
+      let candidate = match next_block {
+        Some(next) => read(&next[offset..end], endianness),
+        None => read(&self.ram_block[offset..end], endianness),
+      };
       let rhs = match expected {
         Some(expected) => expected,
         None => read(&previous_block[offset..end], endianness),

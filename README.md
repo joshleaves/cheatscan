@@ -96,18 +96,53 @@ let results: Vec<u32> = scanner.results().collect();
 
 ### Follow-up Scans
 
-After initialization, `scan(...)` supports both modes:
+After initialization, the API distinguishes between:
 
-- exact value: `ScanValue::U8(...)`, `ScanValue::I16(...)`, etc.
-- previous value: `ScanValue::PreviousValue`
+- `scan(...)`: consumes a **new RAM block**
+- `scan_again(...)`: refines results **on the current RAM block**
 
-Example:
+#### `scan(...)`
+
+Use `scan(...)` when you have a new snapshot of memory:
+
+- supports exact value comparisons
+- supports `PreviousValue` comparisons (compares against the previous block)
 
 ```rust
-scanner.scan(&next_block_a, ComparisonType::Gt, ScanValue::PreviousValue)?;
-scanner.scan(&next_block_b, ComparisonType::Eq, ScanValue::U8(54))?;
-scanner.scan(&next_block_c, ComparisonType::Lt, ScanValue::PreviousValue)?;
+scanner.scan(&next_block, ComparisonType::Gt, ScanValue::PreviousValue)?;
 ```
+
+#### `scan_again(...)`
+
+Use `scan_again(...)` to apply additional filters **without providing a new RAM block**:
+
+- reuses the last scanned block
+- supports only exact value comparisons
+- `ScanValue::PreviousValue` is **not allowed**
+
+```rust
+scanner.scan(&next_block, ComparisonType::Gt, ScanValue::PreviousValue)?;
+scanner.scan_again(ComparisonType::Gt, ScanValue::U8(4))?;
+```
+
+This allows composing multiple conditions on the same snapshot:
+
+- first filter: compare against previous value
+- subsequent filters: refine using exact values
+
+#### Example
+
+```rust
+scanner.scan(&next_block, ComparisonType::Gt, ScanValue::PreviousValue)?;
+scanner.scan_again(ComparisonType::Gt, ScanValue::U8(4))?;
+scanner.scan_again(ComparisonType::Lt, ScanValue::U8(100))?;
+```
+
+This is equivalent to:
+
+- value increased since last snapshot
+- AND value > 4
+- AND value < 100
 
 ### Results
 

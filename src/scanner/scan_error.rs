@@ -41,4 +41,7 @@ pub enum ScanError {
   ///
   /// Triggered during scanner initialization when `ram_block.len() < value_type.width()`.
   RamBlockTooSmall = 7,
+
+  ///
+  PreviousValueRequiresNewBlock = 8,
 }
