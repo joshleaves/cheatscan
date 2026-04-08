@@ -8,18 +8,6 @@ pub enum ScanError {
   /// incompatible with the scanner configuration.
   TypeMismatch = 1,
 
-  /// The provided bytes are not long enough to be converted into  [`ValueType`](crate::ValueType).
-  ///
-  /// Triggered when a scan is requested with a byte array whose width is incompatible with the
-  /// scanner configuration.
-  InvalidValueLength = 2,
-
-  /// A computed result address could not fit in `u32`.
-  ///
-  /// Reserved for address computations that would overflow the public address space exposed by
-  /// the scanner.
-  AddressOverflow = 3,
-
   /// A null pointer was passed through an FFI boundary where a valid RAM block was required.
   ///
   /// This error is meant for higher-level FFI adapters built on top of the Rust core.

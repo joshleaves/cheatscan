@@ -1,4 +1,4 @@
-use crate::Endianness;
+use crate::scanner::Endianness;
 
 /// Reads a `u8` from a raw byte slice.
 pub fn read_u8(bytes: &[u8], _endianness: Endianness) -> u8 {

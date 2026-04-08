@@ -1,11 +1,8 @@
-use crate::Alignment;
-use crate::ComparisonType;
-use crate::Configuration;
-use crate::Endianness;
-use crate::ScanError;
-use crate::ScanValue;
-use crate::Scanner;
-use crate::ValueType;
+use crate::scanner::Scanner;
+use crate::scanner::{
+  Alignment, ComparisonType, Configuration, Endianness, ScanError, ScanValue, ValueType,
+};
+
 use core::slice;
 
 macro_rules! check_not_null {

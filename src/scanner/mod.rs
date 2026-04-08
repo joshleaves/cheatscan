@@ -1,16 +1,23 @@
+pub mod alignment;
 pub mod comparison;
+pub mod configuration;
+pub mod endianness;
 pub mod scan_error;
+pub mod scan_value;
 pub mod value_reader;
 pub mod value_type;
 
+pub use alignment::Alignment;
 pub use comparison::ComparisonType;
+pub use configuration::Configuration;
+pub use endianness::Endianness;
 pub use scan_error::ScanError;
+pub use scan_value::ScanValue;
 pub use value_type::ValueType;
 
 use crate::scanner::value_reader::{
   read_f32, read_i8, read_i16, read_i32, read_u8, read_u16, read_u32,
 };
-use crate::{Alignment, Configuration, Endianness, ScanValue};
 
 /// Stateful memory scanner that keeps the previous RAM block and the current candidate set.
 pub struct Scanner {
@@ -281,7 +288,7 @@ impl Scanner {
 #[cfg(test)]
 mod tests {
   use super::Scanner;
-  use crate::{
+  use crate::scanner::{
     Alignment, ComparisonType, Configuration, Endianness, ScanError, ScanValue, ValueType,
   };
 
