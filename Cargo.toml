@@ -29,3 +29,7 @@ codegen-units = 1 # Reduce number of codegen units to increase optimizations.
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
+
+[[bench]]
+name = "bench_u8"
+harness = false
