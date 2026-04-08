@@ -156,7 +156,6 @@ pub extern "C" fn cheatscan_scan_previous(
   ffi_result!(result)
 }
 
-
 macro_rules! define_scan_fn {
   ($fn_name:ident, $value_ty:ty, $variant:ident) => {
     #[unsafe(no_mangle)]
@@ -194,11 +193,7 @@ define_scan_fn!(cheatscan_scan_f32, f32, F32);
 macro_rules! define_scan_again_fn {
   ($fn_name:ident, $value_ty:ty, $variant:ident) => {
     #[unsafe(no_mangle)]
-    pub extern "C" fn $fn_name(
-      scanner: *mut Scanner,
-      cmp: u8,
-      value: $value_ty,
-    ) -> u8 {
+    pub extern "C" fn $fn_name(scanner: *mut Scanner, cmp: u8, value: $value_ty) -> u8 {
       check_not_null!(scanner, ScanError::NullPointer as u8);
       let cmp = ffi_try!(ComparisonType::try_from(cmp), ScanError::TypeMismatch as u8);
 

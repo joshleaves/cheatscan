@@ -42,6 +42,6 @@ pub enum ScanError {
   /// Triggered during scanner initialization when `ram_block.len() < value_type.width()`.
   RamBlockTooSmall = 7,
 
-  ///
+  /// You cannot call "Scanner::scan_again" with a PreviousValue.
   PreviousValueRequiresNewBlock = 8,
 }

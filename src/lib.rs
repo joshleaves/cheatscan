@@ -70,7 +70,6 @@ impl ScanValue {
 }
 
 /// Immutable scanner configuration shared across all scans.
-#[repr(C)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Configuration {
   pub value_type: ValueType,

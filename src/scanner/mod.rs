@@ -67,7 +67,6 @@ impl Scanner {
     Ok(scanner)
   }
 
-
   /// Applies a new scan against `next_block`.
   ///
   /// `next_block` must have the same length as the block used to initialize the scanner.
@@ -131,19 +130,16 @@ impl Scanner {
     Ok(())
   }
 
-
   /// Applies a new scan against the current block.
   pub fn scan_again(&mut self, cmp: ComparisonType, value: ScanValue) -> Result<(), ScanError> {
     self.ensure_scan_value_matches_config(&value)?;
     if matches!(value, ScanValue::PreviousValue) {
-      return Err(ScanError::PreviousValueRequiresNewBlock)
+      return Err(ScanError::PreviousValueRequiresNewBlock);
     }
-
 
     match value {
       ScanValue::U8(expected) => {
         self.filter_results(None, read_u8, cmp, Some(expected));
-        // self.filter_results(None, read_u8, cmp, Some(expected));
       }
       ScanValue::U16(expected) => {
         self.filter_results(None, read_u16, cmp, Some(expected));
@@ -168,7 +164,6 @@ impl Scanner {
 
     Ok(())
   }
-
 
   /// Returns the number of current candidates.
   ///
@@ -379,6 +374,77 @@ mod tests {
 
     assert_eq!(scanner.count(), 1);
     assert_eq!(results, vec![0x8002]);
+  }
+
+  #[test]
+  fn scan_again_refines_results_on_current_block() {
+    let mut scanner = Scanner::new_from_unknown(config(ValueType::U8), &[10, 20, 30, 40]).unwrap();
+
+    scanner
+      .scan(
+        &[10, 19, 31, 40],
+        ComparisonType::Gt,
+        ScanValue::PreviousValue,
+      )
+      .unwrap();
+    scanner
+      .scan_again(ComparisonType::Eq, ScanValue::U8(31))
+      .unwrap();
+
+    let results: Vec<u32> = scanner.results().collect();
+
+    assert_eq!(scanner.count(), 1);
+    assert_eq!(results, vec![0x8002]);
+  }
+
+  #[test]
+  fn scan_again_can_chain_on_current_block() {
+    let mut scanner = Scanner::new_from_unknown(config(ValueType::U8), &[10, 20, 30, 40]).unwrap();
+
+    scanner
+      .scan(
+        &[10, 19, 31, 40],
+        ComparisonType::Gt,
+        ScanValue::PreviousValue,
+      )
+      .unwrap();
+    scanner
+      .scan_again(ComparisonType::Gt, ScanValue::U8(20))
+      .unwrap();
+    scanner
+      .scan_again(ComparisonType::Lt, ScanValue::U8(32))
+      .unwrap();
+
+    let results: Vec<u32> = scanner.results().collect();
+
+    assert_eq!(scanner.count(), 1);
+    assert_eq!(results, vec![0x8002]);
+  }
+
+  #[test]
+  fn scan_again_rejects_previous_value() {
+    let mut scanner = Scanner::new_from_unknown(config(ValueType::U8), &[10, 20, 30, 40]).unwrap();
+
+    scanner
+      .scan(
+        &[10, 19, 31, 40],
+        ComparisonType::Gt,
+        ScanValue::PreviousValue,
+      )
+      .unwrap();
+
+    let error = scanner.scan_again(ComparisonType::Eq, ScanValue::PreviousValue);
+
+    assert_eq!(error, Err(ScanError::PreviousValueRequiresNewBlock));
+  }
+
+  #[test]
+  fn scan_again_rejects_mismatched_value_type() {
+    let mut scanner = Scanner::new_from_unknown(config(ValueType::U16), &[1, 0, 2, 0]).unwrap();
+
+    let error = scanner.scan_again(ComparisonType::Eq, ScanValue::U8(1));
+
+    assert_eq!(error, Err(ScanError::TypeMismatch));
   }
 
   #[test]

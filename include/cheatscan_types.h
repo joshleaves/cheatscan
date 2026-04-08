@@ -9,7 +9,7 @@
 /**
  * Primitive value kinds supported by the scanner.
  */
-enum ValueType {
+enum CheatscanValueType {
   CHEATSCAN_VALUE_U8 = 0,
   CHEATSCAN_VALUE_U16 = 1,
   CHEATSCAN_VALUE_U32 = 2,
@@ -18,30 +18,30 @@ enum ValueType {
   CHEATSCAN_VALUE_I32 = 5,
   CHEATSCAN_VALUE_F32 = 6,
 };
-typedef uint8_t ValueType;
+typedef uint8_t CheatscanValueType;
 
 /**
  * Byte order used when reading multi-byte values from a RAM block.
  */
-enum Endianness {
+enum CheatscanEndianness {
   CHEATSCAN_ENDIAN_LITTLE = 0,
   CHEATSCAN_ENDIAN_BIG = 1,
 };
-typedef uint8_t Endianness;
+typedef uint8_t CheatscanEndianness;
 
 /**
  * Address stepping strategy used when enumerating scan candidates.
  */
-enum Alignment {
+enum CheatscanAlignment {
   CHEATSCAN_ALIGNMENT_UNALIGNED = 0,
   CHEATSCAN_ALIGNMENT_ALIGNED = 1,
 };
-typedef uint8_t Alignment;
+typedef uint8_t CheatscanAlignment;
 
 /**
  * Comparison operator applied during a scan.
  */
-enum ComparisonType {
+enum CheatscanComparisonType {
   CHEATSCAN_CMP_EQ = 0,
   CHEATSCAN_CMP_NE = 1,
   CHEATSCAN_CMP_LT = 2,
@@ -49,7 +49,7 @@ enum ComparisonType {
   CHEATSCAN_CMP_GT = 4,
   CHEATSCAN_CMP_GE = 5,
 };
-typedef uint8_t ComparisonType;
+typedef uint8_t CheatscanComparisonType;
 
 /**
  * Errors that can occur while constructing or scanning a [`Scanner`](crate::Scanner).
@@ -109,16 +109,5 @@ typedef uint8_t ScanError;
  * Stateful memory scanner that keeps the previous RAM block and the current candidate set.
  */
 typedef struct Scanner Scanner;
-
-/**
- * Immutable scanner configuration shared across all scans.
- */
-typedef struct Configuration {
-  ValueType value_type;
-  Endianness endianness;
-  Alignment alignment;
-  uint32_t base_address;
-} Configuration;
-
 
 #endif  /* CHEATSCAN_TYPES_H */
