@@ -19,7 +19,32 @@ use crate::scanner::value_reader::{
   read_f32, read_i8, read_i16, read_i32, read_u8, read_u16, read_u32,
 };
 
-/// Stateful memory scanner that keeps the previous RAM block and the current candidate set.
+macro_rules! filter_results_by {
+  ($self:expr, $matches:expr) => {{
+    if $self.has_filtered {
+      $self.results.retain(|offset| $matches(*offset as usize));
+    } else {
+      let mut results = Vec::new();
+      $self.candidates_filter(|offset| {
+        if $matches(offset) {
+          results.push(offset as u32);
+        }
+      });
+      $self.results = results;
+      $self.has_filtered = true;
+    }
+  }};
+}
+
+/// Stateful memory scanner for classic "unknown value" and "known value" memory searches.
+///
+/// A `Scanner` owns the previous RAM snapshot and progressively narrows a candidate set of
+/// offsets. The first filtering pass walks the whole implicit search space derived from the
+/// configured [`Alignment`] and [`ValueType`]. Once a pass has materialized results, subsequent
+/// passes only revisit that reduced set.
+///
+/// Result addresses returned by [`Scanner::results`] are absolute addresses: each candidate offset
+/// is translated by the configured [`Configuration::base_address`].
 pub struct Scanner {
   value_type: ValueType,
   endianness: Endianness,
@@ -54,11 +79,47 @@ impl Scanner {
   }
 
   /// Creates a scanner seeded with an initial RAM block, without applying any filter yet.
+  ///
+  /// This is the standard entry point for an "unknown initial value" workflow:
+  ///
+  /// 1. build the scanner from the first RAM snapshot,
+  /// 2. call [`Scanner::scan`] with either an exact value or [`ScanValue::PreviousValue`],
+  /// 3. optionally refine the materialized candidates with more scans.
+  ///
+  /// Until the first filtering pass runs, the scanner stores no explicit result list. In that
+  /// state, [`Scanner::count`] reports the size of the implicit candidate space while
+  /// [`Scanner::results`] yields no items yet.
+  ///
+  /// # Errors
+  ///
+  /// Returns [`ScanError::RamBlockTooSmall`] when `initial_block` is shorter than the configured
+  /// value width and therefore cannot contain even a single candidate.
   pub fn new_from_unknown(config: Configuration, initial_block: &[u8]) -> Result<Self, ScanError> {
     Self::new(config, initial_block)
   }
 
   /// Creates a scanner and immediately applies a first exact-value scan on the provided block.
+  ///
+  /// This is the "known initial value" constructor. It initializes the scanner from
+  /// `initial_block`, then performs the first filtering pass on that same block with the provided
+  /// comparison.
+  ///
+  /// Compared with [`Scanner::new_from_unknown`], this constructor eagerly materializes the first
+  /// result set. That means both [`Scanner::count`] and [`Scanner::results`] reflect the filtered
+  /// candidates immediately after construction succeeds.
+  ///
+  /// `value` must be an exact typed value matching `config.value_type`; using
+  /// [`ScanValue::PreviousValue`] here is nonsensical because there is no older snapshot to compare
+  /// against yet.
+  ///
+  /// # Errors
+  ///
+  /// Returns:
+  ///
+  /// - [`ScanError::InitialScanValueRequired`] if `value` is
+  ///   [`ScanValue::PreviousValue`].
+  /// - [`ScanError::RamBlockTooSmall`] if `initial_block` is too short.
+  /// - [`ScanError::TypeMismatch`] if `value` does not match `config.value_type`.
   pub fn new_from_known(
     config: Configuration,
     initial_block: &[u8],
@@ -76,7 +137,28 @@ impl Scanner {
 
   /// Applies a new scan against `next_block`.
   ///
-  /// `next_block` must have the same length as the block used to initialize the scanner.
+  /// `next_block` must have the same length as the block used to initialize the scanner. On
+  /// success, the scanner updates its stored RAM snapshot to `next_block`, so future
+  /// [`ScanValue::PreviousValue`] comparisons use this new block as the baseline.
+  ///
+  /// The first successful call materializes an explicit candidate list by scanning the whole
+  /// implicit search space. Later calls only revisit the already-matched candidates.
+  ///
+  /// Two scan styles are supported:
+  ///
+  /// - exact-value scans, where `value` is a typed [`ScanValue`] variant matching the configured
+  ///   [`ValueType`],
+  /// - previous-value scans, where `value` is [`ScanValue::PreviousValue`] and each candidate from
+  ///   `next_block` is compared with the corresponding value from the scanner's stored RAM block.
+  ///
+  /// # Errors
+  ///
+  /// Returns:
+  ///
+  /// - [`ScanError::InvalidRamBlockLength`] if `next_block.len()` differs from the initial RAM
+  ///   block length,
+  /// - [`ScanError::TypeMismatch`] if `value` is an exact value with a type incompatible with the
+  ///   scanner configuration.
   pub fn scan(
     &mut self,
     next_block: &[u8],
@@ -87,44 +169,44 @@ impl Scanner {
     self.ensure_scan_value_matches_config(&value)?;
 
     match (self.value_type, value) {
-      (ValueType::U8, ScanValue::U8(expected)) => {
-        self.filter_results(Some(next_block), read_u8, cmp, Some(expected));
+      (ValueType::U8, ScanValue::U8(reference)) => {
+        self.filter_results(Some(next_block), read_u8, cmp, Some(reference));
       }
       (ValueType::U8, ScanValue::PreviousValue) => {
         self.filter_results(Some(next_block), read_u8, cmp, None);
       }
-      (ValueType::U16, ScanValue::U16(expected)) => {
-        self.filter_results(Some(next_block), read_u16, cmp, Some(expected));
+      (ValueType::U16, ScanValue::U16(reference)) => {
+        self.filter_results(Some(next_block), read_u16, cmp, Some(reference));
       }
       (ValueType::U16, ScanValue::PreviousValue) => {
         self.filter_results(Some(next_block), read_u16, cmp, None);
       }
-      (ValueType::U32, ScanValue::U32(expected)) => {
-        self.filter_results(Some(next_block), read_u32, cmp, Some(expected));
+      (ValueType::U32, ScanValue::U32(reference)) => {
+        self.filter_results(Some(next_block), read_u32, cmp, Some(reference));
       }
       (ValueType::U32, ScanValue::PreviousValue) => {
         self.filter_results(Some(next_block), read_u32, cmp, None);
       }
-      (ValueType::I8, ScanValue::I8(expected)) => {
-        self.filter_results(Some(next_block), read_i8, cmp, Some(expected));
+      (ValueType::I8, ScanValue::I8(reference)) => {
+        self.filter_results(Some(next_block), read_i8, cmp, Some(reference));
       }
       (ValueType::I8, ScanValue::PreviousValue) => {
         self.filter_results(Some(next_block), read_i8, cmp, None);
       }
-      (ValueType::I16, ScanValue::I16(expected)) => {
-        self.filter_results(Some(next_block), read_i16, cmp, Some(expected));
+      (ValueType::I16, ScanValue::I16(reference)) => {
+        self.filter_results(Some(next_block), read_i16, cmp, Some(reference));
       }
       (ValueType::I16, ScanValue::PreviousValue) => {
         self.filter_results(Some(next_block), read_i16, cmp, None);
       }
-      (ValueType::I32, ScanValue::I32(expected)) => {
-        self.filter_results(Some(next_block), read_i32, cmp, Some(expected));
+      (ValueType::I32, ScanValue::I32(reference)) => {
+        self.filter_results(Some(next_block), read_i32, cmp, Some(reference));
       }
       (ValueType::I32, ScanValue::PreviousValue) => {
         self.filter_results(Some(next_block), read_i32, cmp, None);
       }
-      (ValueType::F32, ScanValue::F32(expected)) => {
-        self.filter_results(Some(next_block), read_f32, cmp, Some(expected));
+      (ValueType::F32, ScanValue::F32(reference)) => {
+        self.filter_results(Some(next_block), read_f32, cmp, Some(reference));
       }
       (ValueType::F32, ScanValue::PreviousValue) => {
         self.filter_results(Some(next_block), read_f32, cmp, None);
@@ -138,6 +220,22 @@ impl Scanner {
   }
 
   /// Applies a new scan against the current block.
+  ///
+  /// Unlike [`Scanner::scan`], this method does not accept a new RAM snapshot. It refines the
+  /// candidate set by re-evaluating the current stored block against a new exact value.
+  ///
+  /// This is useful after a snapshot-changing pass when you want to keep narrowing candidates
+  /// without waiting for another memory dump. Because no new block is provided, using
+  /// [`ScanValue::PreviousValue`] here is invalid by definition.
+  ///
+  /// # Errors
+  ///
+  /// Returns:
+  ///
+  /// - [`ScanError::PreviousValueRequiresNewBlock`] if `value` is
+  ///   [`ScanValue::PreviousValue`],
+  /// - [`ScanError::TypeMismatch`] if `value` does not match the scanner's configured
+  ///   [`ValueType`].
   pub fn scan_again(&mut self, cmp: ComparisonType, value: ScanValue) -> Result<(), ScanError> {
     self.ensure_scan_value_matches_config(&value)?;
     if matches!(value, ScanValue::PreviousValue) {
@@ -145,26 +243,26 @@ impl Scanner {
     }
 
     match value {
-      ScanValue::U8(expected) => {
-        self.filter_results(None, read_u8, cmp, Some(expected));
+      ScanValue::U8(reference) => {
+        self.filter_results(None, read_u8, cmp, Some(reference));
       }
-      ScanValue::U16(expected) => {
-        self.filter_results(None, read_u16, cmp, Some(expected));
+      ScanValue::U16(reference) => {
+        self.filter_results(None, read_u16, cmp, Some(reference));
       }
-      ScanValue::U32(expected) => {
-        self.filter_results(None, read_u32, cmp, Some(expected));
+      ScanValue::U32(reference) => {
+        self.filter_results(None, read_u32, cmp, Some(reference));
       }
-      ScanValue::I8(expected) => {
-        self.filter_results(None, read_i8, cmp, Some(expected));
+      ScanValue::I8(reference) => {
+        self.filter_results(None, read_i8, cmp, Some(reference));
       }
-      ScanValue::I16(expected) => {
-        self.filter_results(None, read_i16, cmp, Some(expected));
+      ScanValue::I16(reference) => {
+        self.filter_results(None, read_i16, cmp, Some(reference));
       }
-      ScanValue::I32(expected) => {
-        self.filter_results(None, read_i32, cmp, Some(expected));
+      ScanValue::I32(reference) => {
+        self.filter_results(None, read_i32, cmp, Some(reference));
       }
-      ScanValue::F32(expected) => {
-        self.filter_results(None, read_f32, cmp, Some(expected));
+      ScanValue::F32(reference) => {
+        self.filter_results(None, read_f32, cmp, Some(reference));
       }
       _ => unreachable!("scan value compatibility is validated before dispatch"),
     }
@@ -176,6 +274,9 @@ impl Scanner {
   ///
   /// Before the first filtering pass, this returns the implicit candidate count derived from the
   /// configured alignment and value width.
+  ///
+  /// In other words, this method always answers "how many candidates are still possible?", even
+  /// when [`Scanner::results`] has not been materialized yet.
   pub fn count(&self) -> usize {
     if self.has_filtered {
       self.results.len()
@@ -187,6 +288,10 @@ impl Scanner {
   /// Returns an iterator over materialized result addresses.
   ///
   /// The returned addresses already include `base_address`.
+  ///
+  /// Before the first filtering pass, this iterator is empty because the scanner still represents
+  /// the candidate set implicitly. After any successful filtering pass, it yields the current
+  /// surviving candidates in ascending address order.
   pub fn results(&self) -> impl Iterator<Item = u32> + '_ {
     self.results.iter().map(|result| result + self.base_address)
   }
@@ -211,12 +316,16 @@ impl Scanner {
   }
 
   /// Filters candidates by comparing the current value against either a constant value or the previous block.
+  ///
+  /// Reminder:
+  /// - `candidate` is the value being tested.
+  /// - `reference` is the value passed by the user (or the previous one).
   fn filter_results<T, R>(
     &mut self,
     next_block: Option<&[u8]>,
     read: R,
     cmp: ComparisonType,
-    expected: Option<T>,
+    reference: Option<T>,
   ) where
     R: Fn(&[u8], Endianness) -> T,
     T: PartialOrd + PartialEq + Copy,
@@ -225,32 +334,34 @@ impl Scanner {
     let previous_block = self.ram_block.as_slice();
     let cmp_fn = cmp.to_fn();
 
-    let matches = |offset: usize| {
-      let end = offset + self.width;
-      let candidate = match next_block {
-        Some(next) => read(&next[offset..end], endianness),
-        None => read(&self.ram_block[offset..end], endianness),
-      };
-      let rhs = match expected {
-        Some(expected) => expected,
-        None => read(&previous_block[offset..end], endianness),
-      };
-      cmp_fn(candidate, rhs)
-    };
-
-    if self.has_filtered {
-      self.results.retain(|offset| matches(*offset as usize));
-      return;
-    }
-
-    let mut results = Vec::new();
-    self.candidates_filter(|offset| {
-      if matches(offset) {
-        results.push(offset as u32);
+    match (reference, next_block) {
+      (Some(reference), Some(next_block)) => {
+        // Case: We got a value to compare to, we compare it against new block
+        filter_results_by!(self, |offset: usize| {
+          let end = offset + self.width;
+          let candidate = read(&next_block[offset..end], endianness);
+          cmp_fn(candidate, reference)
+        });
       }
-    });
-    self.results = results;
-    self.has_filtered = true;
+      (Some(reference), None) => {
+        // Case: We got a value to compare, but we compare it against current block
+        filter_results_by!(self, |offset: usize| {
+          let end = offset + self.width;
+          let candidate = read(&self.ram_block[offset..end], endianness);
+          cmp_fn(candidate, reference)
+        });
+      }
+      (None, Some(next_block)) => {
+        // We got no value to compare, we take current block and compare to new block
+        filter_results_by!(self, |offset: usize| {
+          let end = offset + self.width;
+          let candidate = read(&next_block[offset..end], endianness);
+          let reference = read(&previous_block[offset..end], endianness);
+          cmp_fn(candidate, reference)
+        });
+      }
+      (None, None) => unreachable!("Can not check previous value without a previous block"),
+    }
   }
 
   /// Iterates over the active candidate offsets.
