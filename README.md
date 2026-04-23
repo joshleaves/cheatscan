@@ -175,6 +175,15 @@ The FFI layer is designed to be:
 
 All functions use explicit scalar arguments and pointer/length pairs.
 
+Address model (current API):
+
+- Public result addresses are 32-bit (`u32` / `uint32_t`).
+- `base_address` is 32-bit.
+- Construction fails with `AddressOverflow` when candidate offsets plus `base_address` cannot fit
+  in `u32`.
+- `cheatscan_count` is also 32-bit at the ABI boundary and saturates to `u32::MAX` if the internal
+  count is larger.
+
 ### Construction
 
 Unknown initial value:

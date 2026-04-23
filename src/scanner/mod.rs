@@ -314,6 +314,9 @@ impl Scanner {
   ///
   /// The returned addresses already include `base_address`.
   ///
+  /// Address model note: result addresses are `u32`. Construction validates this invariant up
+  /// front and returns [`ScanError::AddressOverflow`] if absolute addresses cannot be represented.
+  ///
   /// Before the first filtering pass, this iterator is empty because the scanner still represents
   /// the candidate set implicitly. After any successful filtering pass, it yields the current
   /// surviving candidates in ascending address order.

@@ -337,12 +337,15 @@ define_scan_again_fn!(cheatscan_scan_again_f32, f32, F32);
 /// surviving candidates.
 ///
 /// A null `scanner` returns `0`.
+///
+/// The FFI ABI exposes this value as `u32`. If the internal count exceeds `u32::MAX`, the result
+/// saturates to `u32::MAX`.
 #[unsafe(no_mangle)]
 pub extern "C" fn cheatscan_count(scanner: *mut Scanner) -> u32 {
   check_not_null!(scanner, 0);
 
   let scanner = unsafe { &*scanner };
-  scanner.count() as u32
+  core::cmp::min(scanner.count(), u32::MAX as usize) as u32
 }
 
 /// Writes materialized result addresses into a caller-provided output buffer.
@@ -352,7 +355,9 @@ pub extern "C" fn cheatscan_count(scanner: *mut Scanner) -> u32 {
 /// the function skips the first `offset` materialized results, then writes at most
 /// `out_results_len` addresses.
 ///
-/// Returned addresses already include the scanner's configured base address.
+/// Returned addresses are `u32` and already include the scanner's configured base address.
+/// Scanner construction enforces that these absolute addresses are representable in `u32`
+/// (`ScanError::AddressOverflow` otherwise).
 ///
 /// The return value is the number of addresses actually written. If either `scanner` or
 /// `out_results_ptr` is null, the function returns `0`.

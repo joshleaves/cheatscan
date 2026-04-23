@@ -9,6 +9,13 @@
 extern "C" {
 #endif
 
+/*
+ * Address model:
+ * - Public result addresses are 32-bit (`uint32_t`).
+ * - `base_address` is therefore `uint32_t`.
+ * - Constructors fail with `AddressOverflow` when absolute result addresses would not fit in `u32`.
+ */
+
 Scanner *cheatscan_new_from_unknown(
   CheatscanValueType value_type,
   CheatscanEndianness endiannness,

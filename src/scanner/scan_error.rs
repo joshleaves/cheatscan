@@ -8,6 +8,14 @@ pub enum ScanError {
   /// incompatible with the scanner configuration.
   TypeMismatch = 1,
 
+  /// A raw input value length does not match the configured value type width.
+  ///
+  /// This variant is intended for adapters that accept untyped byte payloads (for example,
+  /// `value_ptr + value_len`) and must validate `value_len == value_type.width()`.
+  ///
+  /// The current typed `Scanner` Rust API does not emit this error.
+  InvalidValueLength = 2,
+
   /// A computed absolute result address could not fit in `u32`.
   ///
   /// Triggered when scanner configuration and RAM-block geometry would make at least one candidate
