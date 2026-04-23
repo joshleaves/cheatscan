@@ -1,6 +1,6 @@
 [package]
 name = "cheatscan"
-version = "0.9.3"
+version = "0.9.4"
 edition = "2024"
 authors = ["Arnaud 'red' Rouyer"]
 readme = "README.md"
@@ -13,6 +13,9 @@ repository = "https://github.com/joshleaves/cheatscan"
 crate-type = ["rlib", "cdylib", "staticlib"]
 name = "cheatscan"
 path = "src/lib.rs"
+
+[features]
+ffi = []
 
 [profile.dev]
 opt-level = 1

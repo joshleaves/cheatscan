@@ -1,3 +1,4 @@
+#[cfg(feature = "ffi")]
 mod ffi;
 pub mod scanner;
 

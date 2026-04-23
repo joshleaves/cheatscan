@@ -13,11 +13,40 @@ macro_rules! check_not_null {
   };
 }
 
+macro_rules! write_out_error {
+  ($out:expr, $err:expr) => {
+    if !$out.is_null() {
+      unsafe { *$out = ($err) as u8 };
+    }
+  };
+}
+
+macro_rules! check_not_null_out {
+  ($out:expr, $ptr:expr, $ret:expr) => {
+    if $ptr.is_null() {
+      write_out_error!($out, ScanError::NullPointer);
+      return $ret;
+    }
+  };
+}
+
 macro_rules! ffi_try {
   ($ptr:expr, $ret:expr) => {
     match $ptr {
       Ok(v) => v,
       Err(_) => return $ret,
+    }
+  };
+}
+
+macro_rules! ffi_try_out {
+  ($out:expr, $expr:expr, $ret:expr, $err:expr) => {
+    match $expr {
+      Ok(v) => v,
+      Err(_) => {
+        write_out_error!($out, $err);
+        return $ret;
+      }
     }
   };
 }
@@ -44,7 +73,7 @@ macro_rules! ffi_result {
 /// On failure, returns null and, when `out_error` is non-null, writes the matching `ScanError`
 /// discriminant.
 ///
-/// Null `initial_block_ptr` is treated as failure and returns null.
+/// Null `initial_block_ptr` is treated as failure and returns null (`NullPointer` in `out_error`).
 #[unsafe(no_mangle)]
 pub extern "C" fn cheatscan_new_from_unknown(
   value_type: u8,
@@ -55,13 +84,28 @@ pub extern "C" fn cheatscan_new_from_unknown(
   initial_block_len: usize,
   out_error: *mut u8,
 ) -> *mut Scanner {
-  check_not_null!(initial_block_ptr, core::ptr::null_mut());
-  let cfg_value_type = ffi_try!(ValueType::try_from(value_type), core::ptr::null_mut());
-  let cfg_endienness = ffi_try!(Endianness::try_from(endianness), core::ptr::null_mut());
-  let cfg_alignment = ffi_try!(Alignment::try_from(alignment), core::ptr::null_mut());
+  check_not_null_out!(out_error, initial_block_ptr, core::ptr::null_mut());
+  let cfg_value_type = ffi_try_out!(
+    out_error,
+    ValueType::try_from(value_type),
+    core::ptr::null_mut(),
+    ScanError::TypeMismatch
+  );
+  let cfg_endianness = ffi_try_out!(
+    out_error,
+    Endianness::try_from(endianness),
+    core::ptr::null_mut(),
+    ScanError::TypeMismatch
+  );
+  let cfg_alignment = ffi_try_out!(
+    out_error,
+    Alignment::try_from(alignment),
+    core::ptr::null_mut(),
+    ScanError::TypeMismatch
+  );
   let config = Configuration {
     value_type: cfg_value_type,
-    endianness: cfg_endienness,
+    endianness: cfg_endianness,
     alignment: cfg_alignment,
     base_address,
   };
@@ -73,15 +117,11 @@ pub extern "C" fn cheatscan_new_from_unknown(
 
   match result {
     Ok(scanner) => {
-      if !out_error.is_null() {
-        unsafe { *out_error = 0 };
-      }
+      write_out_error!(out_error, 0);
       Box::into_raw(Box::new(scanner))
     }
     Err(err) => {
-      if !out_error.is_null() {
-        unsafe { *out_error = err as u8 };
-      }
+      write_out_error!(out_error, err);
       core::ptr::null_mut()
     }
   }
@@ -100,7 +140,8 @@ macro_rules! define_new_from_known_fn {
     #[doc = "`cheatscan_free`. On failure, returns null and optionally writes a `ScanError`"]
     #[doc = "code to `out_error`."]
     #[doc = ""]
-    #[doc = "Passing `initial_block_ptr = NULL` returns null immediately."]
+    #[doc = "Passing `initial_block_ptr = NULL` returns null immediately and writes `NullPointer`"]
+    #[doc = "to `out_error` when non-null."]
     #[unsafe(no_mangle)]
     pub extern "C" fn $fn_name(
       value_type: u8,
@@ -113,17 +154,37 @@ macro_rules! define_new_from_known_fn {
       value: $value_ty,
       out_error: *mut u8,
     ) -> *mut Scanner {
-      check_not_null!(initial_block_ptr, core::ptr::null_mut());
-      let cfg_value_type = ffi_try!(ValueType::try_from(value_type), core::ptr::null_mut());
-      let cfg_endienness = ffi_try!(Endianness::try_from(endianness), core::ptr::null_mut());
-      let cfg_alignment = ffi_try!(Alignment::try_from(alignment), core::ptr::null_mut());
+      check_not_null_out!(out_error, initial_block_ptr, core::ptr::null_mut());
+      let cfg_value_type = ffi_try_out!(
+        out_error,
+        ValueType::try_from(value_type),
+        core::ptr::null_mut(),
+        ScanError::TypeMismatch
+      );
+      let cfg_endianness = ffi_try_out!(
+        out_error,
+        Endianness::try_from(endianness),
+        core::ptr::null_mut(),
+        ScanError::TypeMismatch
+      );
+      let cfg_alignment = ffi_try_out!(
+        out_error,
+        Alignment::try_from(alignment),
+        core::ptr::null_mut(),
+        ScanError::TypeMismatch
+      );
       let config = Configuration {
         value_type: cfg_value_type,
-        endianness: cfg_endienness,
+        endianness: cfg_endianness,
         alignment: cfg_alignment,
         base_address,
       };
-      let cmp = ffi_try!(ComparisonType::try_from(cmp), core::ptr::null_mut());
+      let cmp = ffi_try_out!(
+        out_error,
+        ComparisonType::try_from(cmp),
+        core::ptr::null_mut(),
+        ScanError::TypeMismatch
+      );
 
       let result = unsafe {
         let initial_block = slice::from_raw_parts(initial_block_ptr, initial_block_len);
@@ -132,15 +193,11 @@ macro_rules! define_new_from_known_fn {
 
       match result {
         Ok(scanner) => {
-          if !out_error.is_null() {
-            unsafe { *out_error = 0 };
-          }
+          write_out_error!(out_error, 0);
           Box::into_raw(Box::new(scanner))
         }
         Err(err) => {
-          if !out_error.is_null() {
-            unsafe { *out_error = err as u8 };
-          }
+          write_out_error!(out_error, err);
           core::ptr::null_mut()
         }
       }
@@ -338,4 +395,25 @@ pub extern "C" fn cheatscan_free(scanner: *mut Scanner) {
   }
 
   unsafe { drop(Box::from_raw(scanner)) }
+}
+
+#[unsafe(no_mangle)]
+#[cfg(target_arch = "wasm32")]
+pub extern "C" fn cheatscan_ramblock_alloc(size: usize) -> *mut u8 {
+  let mut buf = Vec::<u8>::with_capacity(size);
+  let ptr = buf.as_mut_ptr();
+  std::mem::forget(buf);
+  ptr
+}
+
+#[unsafe(no_mangle)]
+#[cfg(target_arch = "wasm32")]
+pub extern "C" fn cheatscan_ramblock_free(ptr: *mut u8, capacity: usize) {
+  if ptr.is_null() {
+    return;
+  }
+
+  unsafe {
+    drop(Vec::from_raw_parts(ptr, 0, capacity));
+  }
 }
