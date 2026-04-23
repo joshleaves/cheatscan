@@ -1,5 +1,5 @@
 #[cfg(feature = "ffi")]
-mod ffi;
+pub mod ffi;
 pub mod scanner;
 
 pub use scanner::{
