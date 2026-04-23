@@ -57,6 +57,24 @@ pub struct Scanner {
 }
 
 impl Scanner {
+  fn ensure_address_space(
+    block_len: usize,
+    width: usize,
+    base_address: u32,
+  ) -> Result<(), ScanError> {
+    let max_offset = block_len - width;
+    if max_offset > (u32::MAX as usize) {
+      return Err(ScanError::AddressOverflow);
+    }
+
+    let max_offset = max_offset as u32;
+    if base_address.checked_add(max_offset).is_none() {
+      return Err(ScanError::AddressOverflow);
+    }
+
+    Ok(())
+  }
+
   /// Builds a valid scanner state from an initial RAM block.
   ///
   /// This is the common constructor used by the public initialization paths.
@@ -65,6 +83,7 @@ impl Scanner {
     if initial_block.len() < width {
       return Err(ScanError::RamBlockTooSmall);
     }
+    Self::ensure_address_space(initial_block.len(), width, config.base_address)?;
 
     Ok(Self {
       value_type: config.value_type,
@@ -92,8 +111,12 @@ impl Scanner {
   ///
   /// # Errors
   ///
-  /// Returns [`ScanError::RamBlockTooSmall`] when `initial_block` is shorter than the configured
-  /// value width and therefore cannot contain even a single candidate.
+  /// Returns:
+  ///
+  /// - [`ScanError::RamBlockTooSmall`] when `initial_block` is shorter than the configured value
+  ///   width and therefore cannot contain even a single candidate.
+  /// - [`ScanError::AddressOverflow`] when candidate offsets and `base_address` cannot be
+  ///   represented safely as `u32` addresses.
   pub fn new_from_unknown(config: Configuration, initial_block: &[u8]) -> Result<Self, ScanError> {
     Self::new(config, initial_block)
   }
@@ -119,6 +142,8 @@ impl Scanner {
   /// - [`ScanError::InitialScanValueRequired`] if `value` is
   ///   [`ScanValue::PreviousValue`].
   /// - [`ScanError::RamBlockTooSmall`] if `initial_block` is too short.
+  /// - [`ScanError::AddressOverflow`] if candidate offsets plus `base_address` cannot be
+  ///   represented safely as `u32`.
   /// - [`ScanError::TypeMismatch`] if `value` does not match `config.value_type`.
   pub fn new_from_known(
     config: Configuration,
@@ -293,7 +318,11 @@ impl Scanner {
   /// the candidate set implicitly. After any successful filtering pass, it yields the current
   /// surviving candidates in ascending address order.
   pub fn results(&self) -> impl Iterator<Item = u32> + '_ {
-    self.results.iter().map(|result| result + self.base_address)
+    self.results.iter().map(|result| {
+      result
+        .checked_add(self.base_address)
+        .expect("address-space invariant")
+    })
   }
 
   fn ensure_ram_block_len_matches(&self, next_block: &[u8]) -> Result<(), ScanError> {
@@ -581,5 +610,27 @@ mod tests {
     let error = scanner.scan(&[1, 2], ComparisonType::Eq, ScanValue::U8(1));
 
     assert_eq!(error, Err(ScanError::InvalidRamBlockLength));
+  }
+
+  #[test]
+  fn new_rejects_configuration_when_base_address_overflows_results() {
+    let scanner = Scanner::new_from_unknown(
+      Configuration {
+        value_type: ValueType::U8,
+        endianness: Endianness::Little,
+        alignment: Alignment::Unaligned,
+        base_address: u32::MAX,
+      },
+      &[1, 2],
+    );
+
+    assert!(matches!(scanner, Err(ScanError::AddressOverflow)));
+  }
+
+  #[test]
+  fn ensure_address_space_rejects_offsets_larger_than_u32() {
+    let error = Scanner::ensure_address_space((u32::MAX as usize) + 2, 1, 0);
+
+    assert_eq!(error, Err(ScanError::AddressOverflow));
   }
 }

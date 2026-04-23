@@ -8,6 +8,12 @@ pub enum ScanError {
   /// incompatible with the scanner configuration.
   TypeMismatch = 1,
 
+  /// A computed absolute result address could not fit in `u32`.
+  ///
+  /// Triggered when scanner configuration and RAM-block geometry would make at least one candidate
+  /// address overflow `u32` once translated by `base_address`.
+  AddressOverflow = 3,
+
   /// A null pointer was passed through an FFI boundary where a valid RAM block was required.
   ///
   /// This error is meant for higher-level FFI adapters built on top of the Rust core.
